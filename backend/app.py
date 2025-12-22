@@ -1,10 +1,13 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from PyPDF2 import PdfReader
 import spacy
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import re
+import os
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 
 app = Flask(__name__)
 CORS(app)
@@ -20,6 +23,10 @@ SKILLS_DB = [
     "nlp", "opencv", "data analysis", "tensorflow", "pytorch",
     "aws", "docker", "git", "linux"
 ]
+
+# ---------------- Output Folder ----------------
+OUTPUT_FOLDER = "../output"
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 # ---------------- Helper Functions ----------------
 def extract_text_from_pdf(file):
@@ -44,9 +51,7 @@ def extract_skills(text):
 
 def semantic_similarity(text1, text2):
     embeddings = model.encode([text1, text2])
-    score = cosine_similarity(
-        [embeddings[0]], [embeddings[1]]
-    )[0][0]
+    score = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
     return round(score * 100, 2)
 
 # ---------------- Analysis Logic ----------------
@@ -62,20 +67,13 @@ def analyze_resume(resume_text, jd_text):
 
     overall_score = semantic_similarity(resume_text, jd_text)
 
-    # Section-wise scoring (simple but explainable)
-    skills_score = (
-        (len(matched_skills) / max(len(jd_skills), 1)) * 100
-    )
-
-    experience_score = semantic_similarity(
-        resume_text[:1500], jd_text[:1500]
-    )
-
-    education_score = 70  # baseline (can improve later)
+    # Section-wise scoring
+    skills_score = ((len(matched_skills) / max(len(jd_skills), 1)) * 100)
+    experience_score = semantic_similarity(resume_text[:1500], jd_text[:1500])
+    education_score = 70  # baseline (can improve)
 
     # Strengths & Weaknesses
-    strengths = []
-    weaknesses = []
+    strengths, weaknesses = [], []
 
     if skills_score >= 70:
         strengths.append("Strong technical skill match with job requirements")
@@ -88,9 +86,7 @@ def analyze_resume(resume_text, jd_text):
         weaknesses.append("Experience section needs improvement")
 
     if missing_skills:
-        weaknesses.append(
-            f"Missing important skills: {', '.join(missing_skills)}"
-        )
+        weaknesses.append(f"Missing important skills: {', '.join(missing_skills)}")
 
     suggestions = [
         "Add quantified achievements in experience section",
@@ -116,6 +112,54 @@ def analyze_resume(resume_text, jd_text):
         "suggestions": suggestions
     }
 
+# ---------------- PDF Report ----------------
+def generate_report_pdf(analysis, filename="resume_report.pdf"):
+    pdf_path = os.path.join(OUTPUT_FOLDER, filename)
+    c = canvas.Canvas(pdf_path, pagesize=letter)
+    y = 750
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y, "AI Resume Analysis Report")
+    y -= 30
+
+    c.setFont("Helvetica", 12)
+    c.drawString(50, y, f"Overall Match Score: {analysis['overall_score']}%")
+    y -= 20
+
+    c.drawString(50, y, f"Skills Match: {analysis['score_breakdown']['skills_match']}%")
+    y -= 20
+    c.drawString(50, y, f"Experience Match: {analysis['score_breakdown']['experience_match']}%")
+    y -= 20
+    c.drawString(50, y, f"Education Match: {analysis['score_breakdown']['education_match']}%")
+    y -= 30
+
+    c.drawString(50, y, f"Matched Skills: {', '.join(analysis['skills']['matched_skills']) if analysis['skills']['matched_skills'] else 'None'}")
+    y -= 20
+    c.drawString(50, y, f"Missing Skills: {', '.join(analysis['skills']['missing_skills']) if analysis['skills']['missing_skills'] else 'None'}")
+    y -= 30
+
+    c.drawString(50, y, "Strengths:")
+    y -= 20
+    for s in analysis['strengths']:
+        c.drawString(60, y, f"- {s}")
+        y -= 15
+
+    y -= 10
+    c.drawString(50, y, "Weaknesses:")
+    y -= 20
+    for w in analysis['weaknesses']:
+        c.drawString(60, y, f"- {w}")
+        y -= 15
+
+    y -= 10
+    c.drawString(50, y, "Suggestions:")
+    y -= 20
+    for sug in analysis['suggestions']:
+        c.drawString(60, y, f"- {sug}")
+        y -= 15
+
+    c.save()
+    return pdf_path
+
 # ---------------- API Route ----------------
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -127,10 +171,12 @@ def analyze():
 
     resume_text = extract_text_from_pdf(resume)
     analysis_result = analyze_resume(resume_text, jd)
+    pdf_path = generate_report_pdf(analysis_result)
 
     return jsonify({
         "status": "success",
-        "analysis": analysis_result
+        "analysis": analysis_result,
+        "pdf_report": pdf_path
     })
 
 # ---------------- Run Server ----------------
