@@ -1,23 +1,10 @@
 import re
-from utils.scoring import semantic_similarity, calculate_skills_score
-
-SKILLS_DB = [
-    "python", "java", "c++", "flask", "django", "react", "node",
-    "sql", "mongodb", "machine learning", "deep learning",
-    "nlp", "opencv", "data analysis", "tensorflow", "pytorch",
-    "aws", "docker", "git", "linux"
-]
+from utils.scoring import semantic_similarity
+from utils.skills import extract_skills
 
 def clean_text(text):
     text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-def extract_skills(text):
-    found = set()
-    for skill in SKILLS_DB:
-        if skill in text:
-            found.add(skill)
-    return list(found)
+    return text.strip().lower()
 
 def analyze_resume(resume_text, jd_text):
     resume_text = clean_text(resume_text)
@@ -29,25 +16,29 @@ def analyze_resume(resume_text, jd_text):
     matched_skills = list(set(resume_skills) & set(jd_skills))
     missing_skills = list(set(jd_skills) - set(resume_skills))
 
-    overall_score = semantic_similarity(resume_text, jd_text)
-    skills_score = calculate_skills_score(matched_skills, len(jd_skills))
-    experience_score = semantic_similarity(
-        resume_text[:1500], jd_text[:1500]
-    )
-    education_score = 70  # baseline
+    overall_score = float(semantic_similarity(resume_text, jd_text))
 
-    strengths = []
-    weaknesses = []
+    skills_score = float(
+        (len(matched_skills) / max(len(jd_skills), 1)) * 100
+    )
+
+    experience_score = float(
+        semantic_similarity(resume_text[:1500], jd_text[:1500])
+    )
+
+    education_score = 70.0  # force Python float
+
+    strengths, weaknesses = [], []
 
     if skills_score >= 70:
-        strengths.append("Strong technical skill alignment")
+        strengths.append("Strong technical skill match with job requirements")
     else:
-        weaknesses.append("Skill match is below expected level")
+        weaknesses.append("Skills mismatch with job requirements")
 
     if experience_score >= 65:
-        strengths.append("Relevant experience matches job needs")
+        strengths.append("Relevant experience aligned with job description")
     else:
-        weaknesses.append("Experience needs improvement")
+        weaknesses.append("Experience section needs improvement")
 
     if missing_skills:
         weaknesses.append(
@@ -55,9 +46,9 @@ def analyze_resume(resume_text, jd_text):
         )
 
     suggestions = [
-        "Add quantified achievements in experience",
-        "Include missing job-specific skills",
-        "Optimize keywords for ATS systems"
+        "Add quantified achievements in experience section",
+        "Include missing skills relevant to the job role",
+        "Optimize resume keywords for ATS systems"
     ]
 
     return {
