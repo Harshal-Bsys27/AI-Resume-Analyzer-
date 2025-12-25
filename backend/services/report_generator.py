@@ -1,6 +1,48 @@
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.lib.utils import simpleSplit
 import os
+
+def draw_logo(c, width, y):
+    # Large logo initials
+    c.setFont("Helvetica-Bold", 44)
+    c.setFillColorRGB(1, 0.6, 0.1)
+    c.drawCentredString(width / 2, y, "HireLens")
+    # Subtitle
+    c.setFont("Helvetica-Bold", 18)
+    c.setFillColorRGB(0.2, 0.2, 0.2)
+    c.drawCentredString(width / 2, y - 32, "ATS Resume Analyzer Report")
+    # Divider
+    c.setStrokeColorRGB(1, 0.6, 0.1)
+    c.setLineWidth(3)
+    c.line(width * 0.25, y - 45, width * 0.75, y - 45)
+    c.setFillColorRGB(0, 0, 0)
+
+def draw_wrapped_text(c, text, x, y, max_width, font="Helvetica", font_size=12, color=colors.black, line_height=15):
+    c.setFont(font, font_size)
+    c.setFillColor(color)
+    lines = simpleSplit(text, font, font_size, max_width)
+    for line in lines:
+        if y < 60:
+            c.showPage()
+            y = letter[1] - 40
+        c.drawString(x, y, line)
+        y -= line_height
+    return y
+
+def draw_tag_list(c, label, items, x, y, color, width):
+    if not items:
+        return y
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(color)
+    y = draw_wrapped_text(c, label, x, y, width - x - 20)
+    c.setFont("Helvetica", 12)
+    c.setFillColor(colors.black)
+    tag_line = ", ".join(items)
+    y = draw_wrapped_text(c, tag_line, x + 20, y, width - x - 40)
+    y -= 5
+    return y
 
 def generate_report_pdf(analysis_result, output_dir, filename):
     os.makedirs(output_dir, exist_ok=True)
@@ -8,86 +50,101 @@ def generate_report_pdf(analysis_result, output_dir, filename):
     c = canvas.Canvas(pdf_path, pagesize=letter)
     width, height = letter
 
-    # HireLens Logo/Heading
-    y = height - 40
-    c.setFont("Helvetica-Bold", 28)
-    c.setFillColorRGB(1, 0.7, 0.2)
-    c.drawCentredString(width / 2, y, "HireLens")
-    c.setFont("Helvetica-Bold", 16)
-    c.setFillColorRGB(0.2, 0.2, 0.2)
-    y -= 30
-    c.drawCentredString(width / 2, y, "AI Resume Analyzer Report")
-    c.setFillColorRGB(0, 0, 0)
-    y -= 30
+    # Branding & Logo
+    y = height - 60
+    draw_logo(c, width, y)
+    y -= 80
 
-    c.setFont("Helvetica", 12)
-    c.drawString(40, y, f"Role Selected: {analysis_result.get('selected_role', 'N/A')}")
-    y -= 20
-    c.drawString(40, y, f"Role Detected: {analysis_result.get('role_detected', 'N/A')}")
-    y -= 20
-    c.drawString(40, y, f"Profile Type: {analysis_result.get('profile_type', 'N/A')}")
-    y -= 20
-    c.drawString(40, y, f"Overall ATS Score: {analysis_result.get('overall_score', 0)}%")
-    y -= 20
-    c.drawString(40, y, f"Tech Stack Coverage: {analysis_result.get('techstack_coverage', 0)}%")
-    y -= 20
-    breakdown = analysis_result.get("score_breakdown", {})
-    c.drawString(40, y, f"Skills Match: {breakdown.get('skills_match', 0)}%")
-    y -= 15
-    c.drawString(40, y, f"Experience Match: {breakdown.get('experience_match', 0)}%")
-    y -= 15
-    c.drawString(40, y, f"Education Match: {breakdown.get('education_match', 0)}%")
-    y -= 25
-
-    def draw_section(title, items):
-        nonlocal y
-        c.setFont("Helvetica-Bold", 12)
-        c.setFillColorRGB(1, 0.7, 0.2)
-        c.drawString(40, y, f"{title}:")
-        c.setFillColorRGB(0, 0, 0)
-        y -= 18
-        c.setFont("Helvetica", 12)
-        if items:
-            for item in items:
-                if y < 60:
-                    c.showPage()
-                    y = height - 40
-                c.drawString(60, y, f"- {item}")
-                y -= 15
-        else:
-            c.drawString(60, y, "None")
-            y -= 15
-        y -= 5
-
-    skills = analysis_result.get("skills", {})
-    draw_section("Matched Technical Skills", skills.get("matched_skills", []))
-    draw_section("Missing Technical Skills", skills.get("missing_skills", []))
-    draw_section("Matched Soft Skills", skills.get("matched_soft_skills", []))
-    draw_section("Missing Soft Skills", skills.get("missing_soft_skills", []))
-    draw_section("Matched Certifications", skills.get("matched_certifications", []))
-    draw_section("Missing Certifications", skills.get("missing_certifications", []))
-    draw_section("Matched Role Tech Stack", skills.get("matched_role_skills", []))
-    draw_section("Missing Role Tech Stack", skills.get("missing_role_skills", []))
-    draw_section("Strengths", analysis_result.get("strengths", []))
-    draw_section("Weaknesses", analysis_result.get("weaknesses", []))
-    draw_section("Suggestions", analysis_result.get("suggestions", []))
-    draw_section("Feedback", analysis_result.get("feedback", []))
-    draw_section("Detected Flaws", analysis_result.get("flaws", []))
-    draw_section("Key Responsibilities for this Role", analysis_result.get("key_responsibilities", []))
-    draw_section("Recommended Keywords for this Role", analysis_result.get("recommended_keywords", []))
-
-    # Chart Data
+    # Summary Section
+    c.setFont("Helvetica-Bold", 15)
+    c.setFillColorRGB(1, 0.6, 0.1)
+    c.drawString(40, y, "Summary & Key Insights:")
+    y -= 22
+    summary = analysis_result.get("summary", "No summary available.")
+    y = draw_wrapped_text(c, summary, 60, y, width - 100)
     y -= 10
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColorRGB(1, 0.7, 0.2)
-    c.drawString(40, y, "Chart Data (for frontend visualization):")
-    c.setFillColorRGB(0, 0, 0)
+
+    # Resume & Role Details
+    selected_role = analysis_result.get("selected_role") or analysis_result.get("role_detected") or "Not Provided"
+    role_detected = analysis_result.get("role_detected") or analysis_result.get("selected_role") or "Not Detected"
+    profile_type = analysis_result.get("profile_type", "General")
+    c.setFont("Helvetica-Bold", 13)
+    c.setFillColor(colors.orange)
+    c.drawString(40, y, "Resume & Role Details:")
     y -= 18
     c.setFont("Helvetica", 12)
-    chart_data = analysis_result.get("chart_data", {})
-    for k, v in chart_data.items():
-        c.drawString(60, y, f"{k}: {v}%")
-        y -= 15
+    c.setFillColor(colors.black)
+    y = draw_wrapped_text(c, f"Role Selected: {selected_role}", 60, y, width - 80)
+    y = draw_wrapped_text(c, f"Role Detected: {role_detected}", 60, y, width - 80)
+    y = draw_wrapped_text(c, f"Profile Type: {profile_type}", 60, y, width - 80)
+    y = draw_wrapped_text(c, f"Overall ATS Score: {analysis_result.get('overall_score', 0)}%", 60, y, width - 80)
+    y = draw_wrapped_text(c, f"Tech Stack Coverage: {analysis_result.get('techstack_coverage', 0)}%", 60, y, width - 80)
+    breakdown = analysis_result.get("score_breakdown", {})
+    y = draw_wrapped_text(c, f"Skills Match: {breakdown.get('skills_match', 0)}%", 60, y, width - 80)
+    y = draw_wrapped_text(c, f"Experience Match: {breakdown.get('experience_match', 0)}%", 60, y, width - 80)
+    y = draw_wrapped_text(c, f"Education Match: {breakdown.get('education_match', 0)}%", 60, y, width - 80)
+    y -= 10
+
+    # Show what resume actually has (detected skills, soft skills, certifications)
+    skills = analysis_result.get("skills", {})
+    y = draw_tag_list(
+        c, "Detected Technical Skills:", [s for s in skills.get("matched_skills", []) if "No " not in s], 60, y, colors.green, width
+    )
+    y = draw_tag_list(
+        c, "Detected Soft Skills:", [s for s in skills.get("matched_soft_skills", []) if "No " not in s], 60, y, colors.blue, width
+    )
+    y = draw_tag_list(
+        c, "Detected Certifications:", [s for s in skills.get("matched_certifications", []) if "No " not in s], 60, y, colors.purple, width
+    )
+    y -= 10
+
+    # Strengths, Weaknesses, Suggestions, Feedback, Flaws
+    def draw_list_section(title, items):
+        nonlocal y
+        c.setFont("Helvetica-Bold", 13)
+        c.setFillColor(colors.orange)
+        y = draw_wrapped_text(c, f"{title}:", 40, y, width - 80)
+        c.setFont("Helvetica", 12)
+        c.setFillColor(colors.black)
+        for item in items:
+            if item:
+                y = draw_wrapped_text(c, f"- {item}", 60, y, width - 100)
+        y -= 10
+
+    draw_list_section("Strengths", analysis_result.get("strengths", []))
+    draw_list_section("Weaknesses", analysis_result.get("weaknesses", []))
+    draw_list_section("Suggestions & Action Steps", analysis_result.get("suggestions", []))
+    draw_list_section("Feedback", analysis_result.get("feedback", []))
+    draw_list_section("Detected Flaws", analysis_result.get("flaws", []))
+
+    # Key Responsibilities for this Role
+    key_resp = analysis_result.get("key_responsibilities", [])
+    if key_resp:
+        c.setFont("Helvetica-Bold", 13)
+        c.setFillColor(colors.orange)
+        y = draw_wrapped_text(c, "Key Responsibilities for this Role:", 40, y, width - 80)
+        c.setFont("Helvetica", 12)
+        c.setFillColor(colors.black)
+        for item in key_resp:
+            y = draw_wrapped_text(c, f"- {item}", 60, y, width - 100)
+        y -= 10
+
+    # Recommended Keywords for this Role
+    keywords = analysis_result.get("recommended_keywords", [])
+    if keywords:
+        c.setFont("Helvetica-Bold", 13)
+        c.setFillColor(colors.orange)
+        y = draw_wrapped_text(c, "Keywords for this Role:", 40, y, width - 80)
+        c.setFont("Helvetica", 12)
+        c.setFillColor(colors.black)
+        y = draw_wrapped_text(c, ", ".join(keywords), 60, y, width - 100)
+        y -= 10
+
+    # Footer
+    y -= 30
+    c.setFont("Helvetica-Oblique", 10)
+    c.setFillColor(colors.gray)
+    c.drawCentredString(width / 2, 30, "Generated by HireLens ATS Resume Analyzer | hirelens.ai")
 
     c.save()
     return pdf_path

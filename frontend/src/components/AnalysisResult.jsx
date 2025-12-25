@@ -117,9 +117,14 @@ function AnalysisResult({ data }) {
 
       {/* Download */}
       <div className="text-center mb-16">
-        <button className="bg-blue-600 text-white font-medium px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+        <a
+          href={data.download_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-orange-600 text-white font-medium px-6 py-3 rounded-lg hover:bg-amber-700 transition"
+        >
           Download Report (PDF)
-        </button>
+        </a>
       </div>
 
     </div>

@@ -104,7 +104,6 @@ def download_report(report_id):
         download_name="resume_analysis_report.pdf"
     )
 
-
 # ---------------- Run Server ----------------
 if __name__ == "__main__":
     app.run(debug=True)

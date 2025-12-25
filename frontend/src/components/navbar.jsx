@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 function Navbar() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-gradient-to-r from-gray-900 via-gray-800 to-amber-700 border-b border-gray-700 shadow-lg">
@@ -29,9 +31,9 @@ function Navbar() {
           <a className="hover:text-amber-400 transition" href="#">
             Jobs
           </a>
-          <a className="hover:text-amber-400 transition" href="#">
+          <Link className="hover:text-amber-400 transition" to="/dashboard">
             Dashboard
-          </a>
+          </Link>
         </nav>
 
         {/* Actions */}
@@ -39,9 +41,12 @@ function Navbar() {
           <button className="hidden sm:block text-white hover:text-amber-400 transition">
             Login
           </button>
-          <button className="px-5 py-2 rounded-xl bg-white text-amber-700 font-semibold hover:bg-amber-100 transition shadow-lg border-2 border-gray-900">
+          <Link
+            to="/get-started"
+            className="px-5 py-2 rounded-xl bg-white text-amber-700 font-semibold hover:bg-amber-100 transition shadow-lg border-2 border-gray-900"
+          >
             Get Started
-          </button>
+          </Link>
         </div>
 
       </div>
