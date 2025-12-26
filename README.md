@@ -32,7 +32,6 @@ Simulate how real Applicant Tracking Systems (ATS) scan, filter, and score your 
 | Scorecard/Chart       | ![Chart](screenshots/chart.png)        |
 | Download Report       | ![Download](screenshots/download.png)  |
 
-> Place your screenshots in the `screenshots/` folder and update the file names above as needed.
 
 ---
 
