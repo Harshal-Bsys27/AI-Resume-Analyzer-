@@ -30,6 +30,24 @@ Simulate how real Applicant Tracking Systems scan, filter, and score your resume
 
 ---
 
+
+## 🚀 Deploying on Render (Monorepo: Frontend + Backend)
+
+This project is ready for deployment on Render as a single web service. The backend (Flask) serves the built frontend (React) from `backend/frontend_dist`.
+
+**Steps:**
+1. Push your code to GitHub.
+2. Connect your repo to Render and select the root directory.
+3. Render will use the `render.yaml` to build and run both frontend and backend together.
+4. All frontend routes and static files are handled by Flask; API endpoints remain accessible.
+
+**Note:**
+- The frontend is built to `backend/frontend_dist` and served by Flask.
+- For client-side routing (SPA), Flask serves `index.html` for unknown routes.
+- Make sure `gunicorn` is in `requirements.txt` (already added).
+
+---
+
 ## Getting Started
 
 ### 1. Clone the Repository

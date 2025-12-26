@@ -1,6 +1,8 @@
+
 flask
 flask-cors
 PyPDF2
 spacy
 sentence-transformers
 scikit-learn
+gunicorn

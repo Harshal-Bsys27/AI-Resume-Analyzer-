@@ -8,19 +8,28 @@ from services.nlp_analyzer import analyze_resume
 from services.report_generator import generate_report_pdf
 
 # ---------------- App Config ----------------
-app = Flask(__name__)
+
+# Serve React static files from frontend_dist
+FRONTEND_FOLDER = os.path.join(os.path.dirname(__file__), 'frontend_dist')
+app = Flask(__name__, static_folder=FRONTEND_FOLDER, static_url_path='')
 CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_FOLDER = os.path.join(BASE_DIR, "output")
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-# ---------------- Health Check ----------------
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({
-        "status": "AI Resume Analyzer Backend Running"
-    })
+
+# ---------------- Serve React Frontend & Health Check ----------------
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    if path != "" and os.path.exists(os.path.join(FRONTEND_FOLDER, path)):
+        return send_file(os.path.join(FRONTEND_FOLDER, path))
+    elif path.startswith('api') or path.startswith('analyze') or path.startswith('download-report'):
+        return jsonify({"error": "API endpoint not found"}), 404
+    else:
+        # Serve index.html for React Router
+        return send_file(os.path.join(FRONTEND_FOLDER, 'index.html'))
 
 # ---------------- Analyze Resume ----------------
 @app.route("/analyze", methods=["POST"])
